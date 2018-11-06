@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect
 
 # Create your views here.
 from AXF import settings
-from app.models import Wheel, Nav, Mustbuy, Shop, MainShow, Foodtypes, Goods, User
+from app.models import Wheel, Nav, Mustbuy, Shop, MainShow, Foodtypes, Goods, User, Cart
 
 
 def home(request):
@@ -88,6 +88,13 @@ def market(request,categoryid, childid, sortid):
     elif sortid == '3':
         goodslist = goodslist.order_by('-price')
 
+    # 购物车数据
+    token = request.session.get('token')
+    carts = []
+    if token:   # 根据用户，获取对应用户下所有购物车数据
+        user = User.objects.get(token=token)
+        carts = Cart.objects.filter(user=user)
+
 
     data = {
         'foodtypes': foodtypes,
@@ -95,13 +102,20 @@ def market(request,categoryid, childid, sortid):
         'categoryid': categoryid,
         'childTypleList': childTypleList,
         'childid': childid,
+        'carts': carts
     }
     return render(request, 'market/market.html', context=data)
 
 
 def cart(request):
-    return render(request, 'cart/cart.html')
+    token = request.session.get('token')
+    if token:
+        user = User.objects.get(token=token)
+        carts = Cart.objects.filter(user=user)
 
+        return render(request, 'cart/cart.html', context={'carts': carts})
+    else:
+        return redirect('app:login')
 
 def mine(request):
     # 获取用户信息
@@ -200,7 +214,7 @@ def login(request):
             else:   # 登录失败
                 return render(request, 'mine/login.html', context={'passwdErr': '密码错误!'})
         except:
-            print('e'+account)
+            print('e'+ account)
             return render(request, 'mine/login.html', context={'acountErr':'账号不存在!'})
 
 
@@ -213,3 +227,63 @@ def genarate_password(param):
     sha = hashlib.sha256()
     sha.update(param.encode('utf-8'))
     return sha.hexdigest()
+
+
+def addcart(request):
+    goodsid = request.GET.get('goodsid')
+    token = request.session.get('token')
+
+    responseData = {
+        'msg': '添加购物车成功',
+        'status': 1
+    }
+
+    if token: # 已登录
+        user = User.objects.get(token=token)
+        goods = Goods.objects.get(pk=goodsid)
+
+        # 判断商品是否在购物车中
+        carts = Cart.objects.filter(user=user).filter(goods=goods)
+        if carts.exists():
+            cart = carts.first()
+            cart.number = cart.number + 1
+            cart.save()
+            responseData['number'] = cart.number
+        else:
+            cart = Cart()
+            cart.user = user
+            cart.goods = goods
+            cart.number = 1
+            cart.save()
+
+            responseData['number'] = cart.number
+
+        return JsonResponse(responseData)
+    else: #　未登录
+        responseData['msg'] = '请登录后操作'
+        responseData['status'] = -1
+        return JsonResponse(responseData)
+
+
+
+def subcart(request):
+    goodsid = request.GET.get('goodsid')
+    print(goodsid)
+    token = request.session.get('token')
+    print(token)
+
+    user = User.objects.get(token=token)
+    goods = Goods.objects.get(pk=goodsid)
+
+    cart = Cart.objects.filter(user=user).filter(goods=goods).first()
+    print(cart)
+    cart.number = cart.number - 1
+    print(cart.number)
+    cart.save()
+
+    responseData = {
+        'msg': '购物车减操作成功',
+        'status': 1,
+        'number': cart.number
+    }
+    return JsonResponse(responseData)

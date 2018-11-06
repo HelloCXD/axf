@@ -12,4 +12,7 @@ urlpatterns = [
     url(r'^checkaccount/$', views.checkaccount, name='checkaccount'),
     url(r'^login/$', views.login, name='login'),
     url(r'^logout/$', views.logout, name='logout'),
+
+    url(r'^addcart/$', views.addcart, name='addcart'),
+    url(r'^subcart/$', views.subcart, name='subcart'),
 ]
