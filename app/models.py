@@ -138,5 +138,38 @@ class Cart(models.Model):
     class Meta:
         db_table = 'axf_cart'
 
+# 订单
+# 一个用户 对应 多个订单
+# 在从表这声明关系
+# 状态
+# -1 过期
+# 1 未付款
+# 2 已付款，未发货
+# 3 已发货，快递
+# 4 已签收，未评价
+# 5 已评价
+# 6 退款....
+class Order(models.Model):
+    # 用户
+    user = models.ForeignKey(User)
+    # 创建时间
+    createtime = models.DateTimeField(auto_now_add=True)
+
+    status = models.IntegerField(default=1)
+    # 订单号
+    identifier = models.CharField(max_length=256)
+
+
+# 订单商品
+# 一个订单 对应 多个商品
+# 在从表中声明关系
+class OrderGoods(models.Model):
+    # 订单
+    order = models.ForeignKey(Order)
+    # 商品
+    goods = models.ForeignKey(Goods)
+    # 个数
+    number = models.IntegerField(default=1)
+
 
 

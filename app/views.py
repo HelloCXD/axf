@@ -1,5 +1,7 @@
 import hashlib
 import os
+import random
+import time
 import uuid
 
 
@@ -8,7 +10,7 @@ from django.shortcuts import render, redirect
 
 # Create your views here.
 from AXF import settings
-from app.models import Wheel, Nav, Mustbuy, Shop, MainShow, Foodtypes, Goods, User, Cart
+from app.models import Wheel, Nav, Mustbuy, Shop, MainShow, Foodtypes, Goods, User, Cart, Order, OrderGoods
 
 
 def home(request):
@@ -49,7 +51,7 @@ def market(request,categoryid, childid, sortid):
     # 分类信息
     foodtypes = Foodtypes.objects.all()
 
-    # 分类 点击小标
+    # 分类 点击下标
     typeIndex = int(request.COOKIES.get('typeIndex', 0))
     # 根据分类下标获取对应的分类ＩＤ
     categoryid = foodtypes[typeIndex].typeid
@@ -287,3 +289,71 @@ def subcart(request):
         'number': cart.number
     }
     return JsonResponse(responseData)
+
+
+def changecartstatus(request):
+    cartid = request.GET.get('cartid')
+    print(cartid)
+    cart = Cart.objects.get(pk=cartid)
+    cart.isselect = not cart.isselect
+    cart.save()
+
+    responseData = {
+        'msg': '选中状态改变',
+        'status': 1,
+        'isselect': cart.isselect
+    }
+
+    return JsonResponse(responseData)
+
+
+def changecartselect(request):
+    isselect = request.GET.get('isselect')
+    if isselect == 'true':
+        isselect = True
+    else:
+        isselect = False
+
+    token = request.session.get('token')
+    user = User.objects.get(token=token)
+    carts = Cart.objects.filter(user=user)
+    for cart in carts:
+        cart.isselect = isselect
+        cart.save()
+
+    return JsonResponse({'msg':'全选\取消全选操作成功', 'status':1})
+
+
+def generateorder(request):
+    token = request.session.get('token')
+    user = User.objects.get(token=token)
+    # 生成订单
+    order = Order()
+    order.user = user
+    order.identifier = str(int(time.time())) + str(random.randrange(10000,100000))
+    order.save()
+
+    # 订单商品
+    carts = Cart.objects.filter(user=user).filter(isselect=True)
+    for cart in carts:
+        orderGoods = OrderGoods()
+        orderGoods.order = order
+        orderGoods.goods = cart.goods
+        orderGoods.number = cart.number
+        orderGoods.save()
+
+        # 从购物车移除
+        cart.delete()
+
+    responseData = {
+        'msg':'订单生成成功',
+        'status': 1,
+        'identifier': order.identifier
+    }
+
+    return JsonResponse(responseData)
+
+
+
+def orderinfo(request):
+    return None
